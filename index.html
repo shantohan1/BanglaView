@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>BanglaView - Live Sports Premium</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+          <!-- HLS.js for Live Streaming -->
+          <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+          <style>
+        /* ডিফল্ট ডার্ক থিম ভ্যারিয়েবল */
+        :root {
+            --bg-color: #0b0b0c;
+            --card-gradient: linear-gradient(135deg, #1e1b4b 0%, #31102f 50%, #111827 100%);
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-color: rgba(63, 63, 70, 0.4);
+            --header-bg: rgba(24, 24, 27, 0.4);
+            --inner-bg: rgba(0, 0, 0, 0.3);
+        }
+
+        /* লাইট থিম ভ্যারিয়েবল */
+        [data-theme="light"] {
+            --bg-color: #f4f4f5;
+            --card-gradient: linear-gradient(135deg, #f0fdf4 0%, #fae8ff 50%, #e0f2fe 100%);
+            --text-main: #09090b;
+            --text-muted: #52525b;
+            --border-color: rgba(212, 212, 216, 0.8);
+            --header-bg: rgba(255, 255, 255, 0.8);
+            --inner-bg: rgba(255, 255, 255, 0.6);
+        }
+
+        body { background-color: var(--bg-color); color: var(--text-main); font-family: sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .gradient-card { background: var(--card-gradient); border-color: var(--border-color); }
+        .custom-border { border-color: var(--border-color); }
+        .custom-header { background-color: var(--header-bg); border-color: var(--border-color); }
+        .custom-inner { background-color: var(--inner-bg); border-color: var(--border-color); }
+        .custom-text-muted { color: var(--text-muted); }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .live-blink { animation: blink 1.2s infinite; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+        </head>
+        <body class="p-4 max-w-md mx-auto min-h-screen flex flex-col justify-between select-none" data-theme="dark">
+          <!-- Global Persistent Header and Notification Area -->
+          <div class="w-full">
+            <!-- Header Section -->
+            <div id="main-header" class="custom-header flex justify-between items-center mb-3 p-3 rounded-2xl border backdrop-blur-md sticky top-0 z-40 transition">
+              <h1 class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500 flex items-center">
+                <i class="fa-solid fa-satellite-dish mr-2 text-rose-500 live-blink text-sm">
+                </i>BanglaView 🚀
+              </h1>
+              <div class="flex items-center gap-2">
+                <!-- Theme Toggler Button -->
+                <button onclick="toggleTheme()" id="theme-btn" class="w-8 h-8 rounded-xl bg-zinc-800/40 border border-zinc-700/50 text-amber-400 flex items-center justify-center transition active:scale-95 text-xs">
+                  <i class="fa-solid fa-sun">
+                  </i>
+                </button>
+                <span class="text-[10px] bg-rose-600 px-2.5 py-1 rounded-full text-white font-bold uppercase tracking-wider shadow-sm">💎 Premium</span>
+              </div>
+            </div>
+            <!-- Breaking News/Notification Panel -->
+            <div class="w-full custom-inner border rounded-xl p-1.5 mb-5 overflow-hidden flex items-center gap-2">
+              <span class="bg-rose-600 text-white font-black text-[9px] px-2 py-0.5 rounded shadow-sm shrink-0 flex items-center gap-1">
+                <i class="fa-solid fa-bullhorn text-[8px] live-blink">
+                </i> ঘোষণা
+              </span>
+              <marquee id="breaking-news" class="text-xs font-medium tracking-wide" scrollamount="4">
+                লাইভ স্পোর্টস ওটিটি প্ল্যাটফর্মে আপনাকে স্বাগতম! কাস্টম নোটিফিকেশন লোড হচ্ছে...
+              </marquee>
+            </div>
+          </div>
+          <!-- Main Dynamic Content Container -->
+          <div class="w-full flex-grow">
+            <!-- Video Player Container -->
+            <div id="player-container" class="hidden w-full custom-inner rounded-3xl overflow-hidden border mb-6 shadow-2xl relative p-3">
+              <!-- Dynamic Player Top Control Bar (Back Button Inside) -->
+              <div class="flex justify-between items-center mb-3 px-1">
+                <button onclick="closePlayer()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-rose-500 transition active:scale-95 shadow-md shadow-rose-600/10">
+                  <i class="fa-solid fa-chevron-left text-[10px]">
+                  </i> Back
+                </button>
+                <span class="text-[11px] text-green-500 font-bold flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 bg-green-500 rounded-full live-blink">
+                  </span> স্ট্রিমিং লাইভ রয়েছে</span>
+                </div>
+                <!-- Video Aspect Box -->
+                <div class="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border custom-border">
+                  <video id="live-video" controls autoplay class="w-full h-full">
+                  </video>
+                </div>
+                <!-- Horizontal Multi-Server Stream Selection UI -->
+                <div class="mt-4 custom-inner p-2.5 rounded-xl border">
+                  <p class="text-[10px] custom-text-muted mb-2 px-1 font-bold tracking-wide uppercase flex items-center gap-1">
+                    <i class="fa-solid fa-server text-rose-500">
+                    </i> সার্ভার পরিবর্তন করুন:
+                  </p>
+                  <div id="server-list" class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <!-- Dynamic servers sit here -->
+                  </div>
+                </div>
+              </div>
+              <!-- Multi-Match Schedule List -->
+              <div id="match-container" class="space-y-5 mb-10">
+                <p class="text-center custom-text-muted text-xs mt-10">
+                  <i class="fa-solid fa-spinner fa-spin mr-1">
+                  </i> লাইভ ম্যাচ শিডিউল আপডেট হচ্ছে...</p>
+                </div>
+              </div>
+              <!-- Dynamic Footer Section -->
+              <footer id="dynamic-footer" class="w-full text-center border-t custom-border pt-5 pb-2 text-[11px] custom-text-muted">
+                <!-- Managed from Admin Panel via Custom HTML -->
+              </footer>
+              <!-- Custom HTML Ad Modal -->
+              <div id="ad-modal" class="fixed inset-0 bg-black/95 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
+                <div class="bg-zinc-900 border border-zinc-800/80 p-6 rounded-3xl w-full max-w-sm text-center relative">
+                  <div id="ad-content-area" class="min-h-[150px] flex flex-col justify-center">
+                  </div>
+                  <button id="skip-btn" onclick="executeWatch()" class="mt-6 w-full bg-zinc-800 text-zinc-500 font-medium py-2.5 rounded-xl text-sm transition" disabled>
+                    বিজ্ঞাপন দেখুন (<span id="ad-timer">0</span>s)
+                  </button>
+                </div>
+              </div>
+              <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB8EN48QMqyPJiBRutcdv8ZmdJxZ1P0gYA",
+            authDomain: "studio-2609121129-f2b81.firebaseapp.com",
+            databaseURL: "https://studio-2609121129-f2b81-default-rtdb.firebaseio.com",
+            projectId: "studio-2609121129-f2b81",
+            storageBucket: "studio-2609121129-f2b81.appspot.com",
+            messagingSenderId: "776719766948",
+            appId: "1:776719766948:web:aa29c34793feec928c9d31"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let activeTimers = {};
+        let activeMatchStreams = [];
+        let currentAdDuration = 5;
+        let currentAdHtml = "";
+        let hlsInstance = null;
+
+        const countryList = {
+               "MEX": { name: "Mexico", flag: "🇲🇽" },
+    "KOR": { name: "South Korea", flag: "🇰🇷" },
+    "RSA": { name: "South Africa", flag: "🇿🇦" },
+    "CZE": { name: "Czech Republic", flag: "🇨🇿" },
+    "CAN": { name: "Canada", flag: "🇨🇦" },
+    "BIH": { name: "Bosnia and Herzegovina", flag: "🇧🇦" },
+    "QAT": { name: "Qatar", flag: "🇶🇦" },
+    "SUI": { name: "Switzerland", flag: "🇨🇭" },
+    "BRA": { name: "Brazil", flag: "🇧🇷" },
+    "MAR": { name: "Morocco", flag: "🇲🇦" },
+    "HAI": { name: "Haiti", flag: "🇭🇹" },
+    "SCO": { name: "Scotland", flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿" },
+    "USA": { name: "United States", flag: "🇺🇸" },
+    "PAR": { name: "Paraguay", flag: "🇵🇾" },
+    "AUS": { name: "Australia", flag: "🇦🇺" },
+    "TUR": { name: "Turkey", flag: "🇹🇷" },
+    "GER": { name: "Germany", flag: "🇩🇪" },
+    "CIV": { name: "Ivory Coast", flag: "🇨🇮" },
+    "ECU": { name: "Ecuador", flag: "🇪🇨" },
+    "CUW": { name: "Curacao", flag: "🇨🇼" },
+    "NED": { name: "Netherlands", flag: "🇳🇱" },
+    "JPN": { name: "Japan", flag: "🇯🇵" },
+    "SWE": { name: "Sweden", flag: "🇸🇪" },
+    "TUN": { name: "Tunisia", flag: "🇹🇳" },
+    "BEL": { name: "Belgium", flag: "🇧🇪" },
+    "EGY": { name: "Egypt", flag: "🇪🇬" },
+    "IRN": { name: "Iran", flag: "🇮🇷" },
+    "NZL": { name: "New Zealand", flag: "🇳🇿" },
+    "ESP": { name: "Spain", flag: "🇪🇸" },
+    "URU": { name: "Uruguay", flag: "🇺🇾" },
+    "KSA": { name: "Saudi Arabia", flag: "🇸🇦" },
+    "CPV": { name: "Cape Verde", flag: "🇨🇻" },
+    "FRA": { name: "France", flag: "🇫🇷" },
+    "SEN": { name: "Senegal", flag: "🇸🇳" },
+    "NOR": { name: "Norway", flag: "🇳🇴" },
+    "IRQ": { name: "Iraq", flag: "🇮🇶" },
+    "ARG": { name: "Argentina", flag: "🇦🇷" },
+    "ALG": { name: "Algeria", flag: "🇩🇿" },
+    "AUT": { name: "Austria", flag: "🇦🇹" },
+    "JOR": { name: "Jordan", flag: "🇯🇴" },
+    "POR": { name: "Portugal", flag: "🇵🇹" },
+    "COL": { name: "Colombia", flag: "🇨🇴" },
+    "UZB": { name: "Uzbekistan", flag: "🇺🇿" },
+    "COD": { name: "DR Congo", flag: "🇨🇩" },
+    "ENG": { name: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
+    "CRO": { name: "Croatia", flag: "🇭🇷" },
+    "GHA": { name: "Ghana", flag: "🇬🇭" },
+    "PAN": { name: "Panama", flag: "🇵🇦" }
+};
+
+        function getTeamDetails(code) {
+            if (!code) return { name: "Unknown", flag: "🏳️" };
+            let upperCode = code.toUpperCase().trim();
+            return countryList[upperCode] || { name: code, flag: "🏳️" };
+        }
+
+        // থিম চেঞ্জার ফাংশন
+        window.toggleTheme = function() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const themeBtn = document.getElementById('theme-btn');
+            
+            if (currentTheme === 'dark') {
+                body.setAttribute('data-theme', 'light');
+                themeBtn.innerHTML = `<i class="fa-solid fa-moon"></i>`;
+                themeBtn.className = "w-8 h-8 rounded-xl bg-zinc-300 border border-zinc-400 text-zinc-800 flex items-center justify-center transition active:scale-95 text-xs";
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                themeBtn.innerHTML = `<i class="fa-solid fa-sun"></i>`;
+                themeBtn.className = "w-8 h-8 rounded-xl bg-zinc-800/40 border border-zinc-700/50 text-amber-400 flex items-center justify-center transition active:scale-95 text-xs";
+            }
+        }
+
+        // ফায়ারবেস থেকে লাইভ নোটিফিকেশন / ব্রেকিং নিউজ এডিট করা
+        onSnapshot(doc(db, "settings", "marquee_config"), (docSnap) => {
+            const marqueeEl = document.getElementById('breaking-news');
+            if(docSnap.exists() && docSnap.data().text) {
+                marqueeEl.innerText = docSnap.data().text;
+            } else {
+                marqueeEl.innerText = "🔥 BanglaView তে স্বাগতম! অ্যাপ থেকে সরাসরি হাই ডেফিনিশন স্পোর্টস লাইভ স্ট্রিম উপভোগ করুন।";
+            }
+        });
+
+        // গ্লোবাল ফুটার রিড করা
+        onSnapshot(doc(db, "settings", "footer_config"), (docSnap) => {
+            const footerEl = document.getElementById('dynamic-footer');
+            if(docSnap.exists() && docSnap.data().htmlCode) {
+                footerEl.innerHTML = docSnap.data().htmlCode;
+            } else {
+                footerEl.innerHTML = `<p>© 2026 Shanix TV. All Rights Reserved.</p>`;
+            }
+        });
+
+        // ম্যাচের তালিকা লোড করা
+        const matchesQuery = query(collection(db, "matches"), orderBy("matchTimestamp", "asc"));
+        onSnapshot(matchesQuery, (snapshot) => {
+            const container = document.getElementById('match-container');
+            if (snapshot.empty) {
+                container.innerHTML = `<div class="text-center custom-text-muted text-xs py-12">📭 বর্তমানে কোনো ম্যাচ শিডিউল করা নেই।</div>`;
+                return;
+            }
+
+            container.innerHTML = "";
+            activeTimers = {}; 
+            const now = new Date().getTime();
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const matchId = doc.id;
+                
+                const team1Info = getTeamDetails(data.team1);
+                const team2Info = getTeamDetails(data.team2);
+                let sportsIcon = data.sportType === "cricket" ? "fa-bat-ball" : "fa-soccer-ball";
+                let sportsEmoji = data.sportType === "cricket" ? "🏏" : "⚽";
+                
+                const matchDateObj = new Date(data.matchTimestamp);
+                const formattedTimeText = matchDateObj.toLocaleString('bn-BD', { 
+                    timeZone: 'Asia/Dhaka',
+                    weekday: 'long', month: 'long', day: 'numeric', 
+                    hour: 'numeric', minute: 'numeric', hour12: true 
+                });
+
+                const isUpcoming = data.matchTimestamp > now;
+                const isWatchEnabled = data.watchActive !== false;
+
+                let statusBadge = isUpcoming 
+                    ? `<span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wide">⏳ Upcoming</span>`
+                    : `<span class="text-[10px] bg-green-500 text-black px-2.5 py-0.5 rounded-full font-black uppercase tracking-wide live-blink flex items-center gap-1">🔥 LIVE NOW</span>`;
+
+                let watchButtonHtml = "";
+                if(isWatchEnabled) {
+                    window[`matchData_${matchId}`] = {
+                        streams: data.streams || [],
+                        duration: data.adDuration || 5,
+                        adHtml: data.customHtmlAd || ""
+                    };
+                    watchButtonHtml = `
+                        <button onclick="initiateAdProcess('${matchId}')" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-rose-600/10 transition active:scale-[0.99] flex items-center justify-center gap-2 text-sm">
+                            <i class="fa-solid fa-circle-play text-xs"></i> খেলা দেখুন (Watch Now) 🍿
+                        </button>
+                    `;
+                } else {
+                    watchButtonHtml = `
+                        <button class="w-full custom-inner custom-text-muted font-semibold py-3 rounded-2xl cursor-not-allowed flex items-center justify-center gap-2 text-sm border" disabled>
+                            <i class="fa-solid fa-ban text-xs"></i> সম্প্রচার বন্ধ আছে 🔒
+                        </button>
+                    `;
+                }
+
+                const cardHtml = `
+                    <div class="gradient-card rounded-3xl p-5 shadow-xl relative overflow-hidden border">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="custom-inner text-[11px] px-2.5 py-1 rounded-xl font-medium border">
+                                <i class="fa-solid ${sportsIcon} mr-1 text-rose-400"></i> ${sportsEmoji} ${data.groupName || 'Tournament'}
+                            </span>
+                            ${statusBadge}
+                        </div>
+
+                        <div class="flex justify-between items-center mb-5">
+                            <div class="text-center w-5/12">
+                                <div class="text-3xl custom-inner w-14 h-14 rounded-full mx-auto flex items-center justify-center border shadow-inner">${team1Info.flag}</div>
+                                <p class="text-xs mt-2 font-bold truncate">${team1Info.name}</p>
+                            </div>
+                            <div class="custom-text-muted font-black text-xs custom-inner px-2.5 py-1 rounded-lg border">VS</div>
+                            <div class="text-center w-5/12">
+                                <div class="text-3xl custom-inner w-14 h-14 rounded-full mx-auto flex items-center justify-center border shadow-inner">${team2Info.flag}</div>
+                                <p class="text-xs mt-2 font-bold truncate">${team2Info.name}</p>
+                            </div>
+                        </div>
+
+                        <div id="timer-box-${matchId}" class="${isUpcoming ? '' : 'hidden'} grid grid-cols-4 gap-1.5 text-center mb-5 max-w-xs mx-auto custom-inner p-2 rounded-2xl border">
+                            <div class="custom-header p-1.5 rounded-xl"><span id="days-${matchId}" class="text-base font-black text-amber-400 block">00</span><span class="text-[9px] custom-text-muted uppercase font-medium">Days</span></div>
+                            <div class="custom-header p-1.5 rounded-xl"><span id="hours-${matchId}" class="text-base font-black block">00</span><span class="text-[9px] custom-text-muted uppercase font-medium">Hrs</span></div>
+                            <div class="custom-header p-1.5 rounded-xl"><span id="minutes-${matchId}" class="text-base font-black block">00</span><span class="text-[9px] custom-text-muted uppercase font-medium">Min</span></div>
+                            <div class="custom-header p-1.5 rounded-xl"><span id="seconds-${matchId}" class="text-base font-black text-rose-500 block">00</span><span class="text-[9px] custom-text-muted uppercase font-medium">Sec</span></div>
+                        </div>
+
+                        <div id="live-box-${matchId}" class="${isUpcoming ? 'hidden' : ''} text-center mb-5 bg-green-500/5 py-2.5 rounded-xl border border-green-500/20">
+                            <p class="text-green-400 text-xs font-medium tracking-wide"><i class="fa-solid fa-circle-nodes mr-1.5 text-[10px] live-blink"></i> হাই-স্পিড সার্ভারে খেলা লাইভ চলছে ⚡</p>
+                        </div>
+
+                        <div class="text-center text-[11px] custom-text-muted space-y-0.5 custom-inner py-2 rounded-xl border mb-5">
+                            <p><i class="fa-regular fa-clock mr-1"></i> ${formattedTimeText}</p>
+                            <p><i class="fa-solid fa-stadium mr-1"></i> 🏟️ ${data.venue || 'Dhaka'}</p>
+                        </div>
+
+                        ${watchButtonHtml}
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+
+                if (isUpcoming) activeTimers[matchId] = data.matchTimestamp;
+            });
+
+            startGlobalCountdownEngine();
+        });
+
+        function startGlobalCountdownEngine() {
+            setInterval(() => {
+                const now = new Date().getTime();
+                Object.keys(activeTimers).forEach((id) => {
+                    const distance = activeTimers[id] - now;
+                    if (distance <= 0) {
+                        delete activeTimers[id];
+                        window.location.reload(); 
+                        return;
+                    }
+                    document.getElementById(`days-${id}`).innerText = String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0');
+                    document.getElementById(`hours-${id}`).innerText = String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0');
+                    document.getElementById(`minutes-${id}`).innerText = String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0');
+                    document.getElementById(`seconds-${id}`).innerText = String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0');
+                });
+            }, 1000);
+        }
+
+        window.initiateAdProcess = function(matchId) {
+            const matchObj = window[`matchData_${matchId}`];
+            if(!matchObj) return;
+
+            activeMatchStreams = matchObj.streams;
+            currentAdDuration = matchObj.duration;
+            currentAdHtml = matchObj.adHtml;
+
+            document.getElementById('ad-modal').classList.remove('hidden');
+            let currentTimer = currentAdDuration;
+            const skipBtn = document.getElementById('skip-btn');
+            
+            skipBtn.disabled = true;
+            skipBtn.innerText = "⏳ বিজ্ঞাপন লোড হচ্ছে (" + currentTimer + "s)";
+            skipBtn.className = "mt-6 w-full bg-zinc-800 text-zinc-500 font-semibold py-2.5 rounded-xl text-sm transition";
+
+            if(currentAdHtml && currentAdHtml.trim() !== "") {
+                document.getElementById('ad-content-area').innerHTML = currentAdHtml;
+            } else {
+                document.getElementById('ad-content-area').innerHTML = `
+                    <div class="mb-2"><span class="text-[10px] bg-rose-500/10 text-rose-400 px-2 py-0.5 rounded font-bold border border-rose-500/20">SPONSORED AD</span></div>
+                    <h3 class="text-sm font-bold text-white mb-1">🎯 আপনার প্লেয়ার রেডি হচ্ছে</h3>
+                    <p class="text-zinc-400 text-xs">কিছুক্ষণ অপেক্ষা করার পর স্কিপ বাটন চলে আসবে।</p>
+                `;
+            }
+
+            const adInterval = setInterval(() => {
+                currentTimer--;
+                if(currentTimer <= 0) {
+                    clearInterval(adInterval);
+                    skipBtn.disabled = false;
+                    skipBtn.innerText = "⏩ Skip Now";
+                    skipBtn.className = "mt-6 w-full bg-gradient-to-r from-rose-600 to-amber-600 text-white font-bold py-2.5 rounded-xl text-sm shadow-md transition active:scale-95";
+                } else {
+                    skipBtn.innerText = "⏳ বিজ্ঞাপন লোড হচ্ছে (" + currentTimer + "s)";
+                }
+            }, 1000);
+        }
+
+        window.executeWatch = function() {
+            document.getElementById('ad-modal').classList.add('hidden');
+            if(activeMatchStreams && activeMatchStreams.length > 0) {
+                document.getElementById('match-container').classList.add('hidden');
+                document.getElementById('player-container').classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                const serverListContainer = document.getElementById('server-list');
+                serverListContainer.innerHTML = "";
+                
+                activeMatchStreams.forEach((stream, index) => {
+                    const btn = document.createElement('button');
+                    btn.id = `srv-btn-${index}`;
+                    btn.innerText = "⚡ " + (stream.name || `Server ${index + 1}`);
+                    btn.className = `shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border transition ${index === 0 ? 'bg-gradient-to-r from-rose-600 to-pink-600 text-white border-rose-500 shadow-md shadow-rose-600/20' : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800'}`;
+                    btn.onclick = () => switchStreamServer(stream.url, index);
+                    serverListContainer.appendChild(btn);
+                });
+
+                switchStreamServer(activeMatchStreams[0].url, 0);
+            }
+        }
+
+        window.switchStreamServer = function(streamUrl, activeIndex) {
+            activeMatchStreams.forEach((_, idx) => {
+                const btn = document.getElementById(`srv-btn-${idx}`);
+                if(btn) {
+                    if(idx === activeIndex) {
+                        btn.className = "shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border bg-gradient-to-r from-rose-600 to-pink-600 text-white border-rose-500 shadow-md shadow-rose-600/20";
+                    } else {
+                        btn.className = "shrink-0 px-3.5 py-2 text-xs font-bold rounded-xl border bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800";
+                    }
+                }
+            });
+
+            const video = document.getElementById('live-video');
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+
+            if (Hls.isSupported()) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(streamUrl);
+                hlsInstance.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+            }
+        }
+
+        window.closePlayer = function() {
+            const video = document.getElementById('live-video');
+            video.pause();
+            if (hlsInstance) {
+                hlsInstance.destroy();
+                hlsInstance = null;
+            }
+            video.src = "";
+            document.getElementById('player-container').classList.add('hidden');
+            document.getElementById('match-container').classList.remove('hidden');
+        }
+    </script>
+            </body>
+          </html>
